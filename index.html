@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Safe Exit — Kikoff Credit Account cancellation prototype</title>
+<style>
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 16px; min-height: 100vh;
+    background: #EDEDE9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center;
+  }
+
+  .se-root {
+    --ink: #14181F; --ink-soft: #4A5160; --ink-faint: #7B8291;
+    --paper: #F6F6F3; --surface: #FFFFFF; --line: #E4E4E0;
+    --primary: #2951C4; --primary-dark: #1E3D96; --primary-tint: #EAF0FC;
+    --success: #1F7A50; --success-tint: #E7F3EC; --success-line: #BFE0CD;
+    --caution: #9A5B00; --caution-tint: #FBF0DC; --caution-line: #F0D8A6;
+    --danger: #B23A3A; --danger-tint: #FBEAEA; --danger-line: #EFC3C3;
+    color: var(--ink); background: var(--paper);
+    border-radius: 16px; border: 1px solid var(--line);
+    overflow: hidden; max-width: 720px; width: 100%; margin: 0 auto;
+    box-shadow: 0 20px 50px rgba(20,24,31,.12);
+  }
+  .se-display { font-family: Georgia, "Times New Roman", serif; }
+  .se-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-numeric: tabular-nums; }
+
+  .se-topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--surface); flex-wrap: wrap; gap: 10px; }
+  .se-wordmark { display: flex; align-items: center; gap: 8px; }
+  .se-wordmark-text { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
+  .se-proto-pill { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; background: var(--primary-tint); color: var(--primary-dark); padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+  .se-view-toggle { display: flex; gap: 6px; }
+  .se-toggle-btn { font-size: 12.5px; font-weight: 500; padding: 6px 11px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all .12s; }
+  .se-toggle-btn:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .se-toggle-btn.is-active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
+  .se-demorow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .se-demorow-label { font-size: 11.5px; color: var(--ink-faint); margin-right: 2px; }
+  .se-demo-btn { font-size: 12px; padding: 5px 10px; border-radius: 20px; cursor: pointer; border: 1px solid var(--line); background: var(--paper); color: var(--ink-soft); font-weight: 500; }
+  .se-demo-btn.is-active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  .se-tracker { display: flex; align-items: center; padding: 18px 24px 6px; }
+  .se-tracker-item { display: flex; align-items: center; flex: 1; }
+  .se-tracker-item:last-child { flex: 0; }
+  .se-tracker-dot { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink-faint); background: var(--surface); flex-shrink: 0; }
+  .se-tracker-dot.is-active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .se-tracker-dot.is-current { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .se-tracker-label { font-size: 12px; margin-left: 7px; color: var(--ink-faint); white-space: nowrap; }
+  .se-tracker-label.is-current { color: var(--ink); font-weight: 600; }
+  .se-tracker-line { height: 1px; background: var(--line); flex: 1; margin: 0 10px; }
+  .se-tracker-line.is-active { background: var(--ink); }
+
+  .se-content { padding: 22px 24px 26px; }
+  .se-h1 { font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .se-sub { font-size: 14px; color: var(--ink-soft); line-height: 1.55; margin: 0 0 18px; max-width: 46ch; }
+
+  .se-snapshot { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px 18px; margin-bottom: 20px; }
+  .se-ledger-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--line); gap: 12px; }
+  .se-ledger-row:last-child { border-bottom: none; }
+  .se-ledger-label { font-size: 13.5px; color: var(--ink-soft); }
+  .se-ledger-value { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 13.5px; font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; }
+  .tone-success { color: var(--success); }
+  .tone-danger { color: var(--danger); }
+  .tone-primary { color: var(--primary-dark); }
+
+  .se-pill { font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 20px; display: inline-block; }
+  .se-pill-neutral { background: var(--paper); color: var(--ink-soft); border: 1px solid var(--line); }
+  .se-pill-success { background: var(--success-tint); color: var(--success); }
+  .se-pill-danger { background: var(--danger-tint); color: var(--danger); }
+
+  .se-card { display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .se-card-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--primary-tint); color: var(--primary-dark); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; }
+  .se-card-title { font-size: 14px; font-weight: 600; margin: 0 0 3px; }
+  .se-card-text { font-size: 13px; color: var(--ink-soft); line-height: 1.55; margin: 0; }
+  .se-learnmore { font-size: 12.5px; color: var(--primary); font-weight: 500; margin-top: 6px; display: inline-block; cursor: pointer; }
+
+  .se-timeline { position: relative; padding-left: 26px; margin: 4px 0 18px; }
+  .se-tl-item { position: relative; padding-bottom: 20px; }
+  .se-tl-item:last-child { padding-bottom: 0; }
+  .se-tl-dot { position: absolute; left: -26px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+  .se-tl-line { position: absolute; left: -21.5px; top: 12px; bottom: -8px; width: 1.5px; background: var(--line); }
+  .se-tl-item:last-child .se-tl-line { display: none; }
+  .se-tl-date { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; color: var(--ink-faint); margin-bottom: 2px; }
+  .se-tl-text { font-size: 14px; font-weight: 500; }
+
+  .se-note { border-radius: 10px; padding: 13px 15px; font-size: 13px; line-height: 1.55; margin-bottom: 18px; }
+  .se-note-info { background: var(--primary-tint); color: var(--primary-dark); }
+  .se-note-success { background: var(--success-tint); color: var(--success); }
+  .se-note-danger { background: var(--danger-tint); color: var(--danger); border: 1px solid var(--danger-line); }
+  .se-note-title { font-weight: 700; margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
+
+  .se-actions { display: flex; align-items: center; gap: 14px; margin-top: 6px; flex-wrap: wrap; }
+  .se-btn { font-size: 14px; font-weight: 600; padding: 11px 20px; border-radius: 9px; cursor: pointer; border: none; display: flex; align-items: center; gap: 7px; transition: opacity .12s, transform .05s; }
+  .se-btn:active { transform: scale(0.98); }
+  .se-btn-primary { background: var(--primary); color: #fff; }
+  .se-btn-primary:hover { background: var(--primary-dark); }
+  .se-btn-secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+  .se-btn-secondary:hover { border-color: var(--ink-faint); }
+  .se-btn-danger { background: var(--danger); color: #fff; }
+  .se-link-btn { background: none; border: none; color: var(--ink-soft); font-size: 13.5px; text-decoration: underline; cursor: pointer; padding: 4px 0; }
+
+  .se-select { width: 100%; font-size: 13.5px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); margin-top: 8px; }
+
+  .se-receipt { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin: 6px 0 18px; }
+  .se-receipt-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
+  .se-receipt-title { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: 15px; }
+  .se-receipt-id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12px; color: var(--ink-faint); margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); text-align: center; }
+
+  .se-footer-note { font-size: 11.5px; color: var(--ink-faint); text-align: center; padding: 12px 20px 16px; border-top: 1px solid var(--line); background: var(--surface); }
+
+  .se-toast-wrap { position: relative; }
+  .se-toast { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; font-size: 13px; padding: 10px 16px; border-radius: 20px; box-shadow: 0 6px 20px rgba(0,0,0,.18); z-index: 20; white-space: nowrap; }
+
+  .se-dash { padding: 20px 24px 26px; }
+  .se-dash-title { font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 600; margin: 0 0 3px; }
+  .se-dash-sub { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 18px; }
+  .se-metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .se-metric { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .se-metric-label { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; }
+  .se-metric-value { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 19px; font-weight: 600; }
+  .se-funnel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; }
+  .se-funnel-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .se-funnel-bar { height: 8px; border-radius: 4px; background: var(--primary); }
+  .se-funnel-label { font-size: 12.5px; width: 168px; flex-shrink: 0; color: var(--ink-soft); }
+  .se-funnel-value { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12px; width: 56px; text-align: right; flex-shrink: 0; }
+  .se-seg-title { font-size: 12.5px; font-weight: 600; margin: 16px 0 8px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .03em; }
+  .se-seg-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .se-seg-table td { font-size: 12.5px; padding: 7px 12px; border-bottom: 1px solid var(--line); }
+  .se-seg-table tr:last-child td { border-bottom: none; }
+  .se-seg-table td:last-child { text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+  .se-eventlog { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; max-height: 190px; overflow-y: auto; }
+  .se-event-row { display: flex; gap: 8px; font-size: 11.5px; padding: 3px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; color: var(--ink-soft); }
+  .se-event-time { color: var(--ink-faint); flex-shrink: 0; }
+  .se-empty { font-size: 12.5px; color: var(--ink-faint); padding: 6px 0; }
+  .se-synth-tag { font-size: 10.5px; color: var(--ink-faint); font-style: italic; margin-bottom: 4px; }
+
+  .se-btn:focus-visible, .se-toggle-btn:focus-visible, .se-demo-btn:focus-visible,
+  .se-link-btn:focus-visible, .se-select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .se-toast { transition: opacity .15s; opacity: 0; pointer-events: none; }
+  .se-toast.is-visible { opacity: 1; }
+</style>
+</head>
+<body>
+  <div class="se-root" id="app"></div>
+
+<script>
+/* ---------------------------------------------------------------------- */
+/* Synthetic demo data — not Kikoff data                                   */
+/* ---------------------------------------------------------------------- */
+const DEMOS = {
+  demo1: { id:"demo1", label:"Premium · $0 balance", state:"A", plan:"Premium", monthlyPrice:20, balance:0, paymentStatus:"current", nextPaymentLabel:null, renewalDateLabel:"September 5, 2026", effectiveDateLabel:"September 5, 2026", last4:"4471" },
+  demo2: { id:"demo2", label:"Premium · $40 balance", state:"B", plan:"Premium", monthlyPrice:20, balance:40, paymentStatus:"current", nextPaymentLabel:"September 5, 2026", renewalDateLabel:"September 5, 2026", effectiveDateLabel:"September 5, 2026", last4:"1234" },
+  // nextPaymentLabel is the next *upcoming* charge; pastDue* describes the amount
+  // already missed — these are deliberately different dates (see the plan-screen card).
+  demo3: { id:"demo3", label:"Premium · $40 past due", state:"C", plan:"Premium", monthlyPrice:20, balance:40, paymentStatus:"past_due", nextPaymentLabel:"September 5, 2026", renewalDateLabel:"September 5, 2026", effectiveDateLabel:"September 5, 2026", pastDueDate:"August 12, 2026", pastDueAmount:40, last4:"9981" },
+  demo4: { id:"demo4", label:"Basic · $0 balance", state:"A", plan:"Basic", monthlyPrice:5, balance:0, paymentStatus:"current", nextPaymentLabel:null, renewalDateLabel:"September 5, 2026", effectiveDateLabel:"September 5, 2026", last4:"5502" },
+};
+const REASONS = ["Too expensive","I no longer need credit building","I didn't see the results I expected","Billing concern","Switching to another product","Other"];
+const STAGES = ["Understand","Confirm","Record","Verify"];
+const FUNNEL = [
+  { label:"Cancellation started", value:10000 },
+  { label:"Account state viewed", value:9100 },
+  { label:"Cancellation reviewed", value:8700 },
+  { label:"Cancellation confirmed", value:8400 },
+];
+const SEGMENTS = {
+  "Balance at cancellation": [
+    { label:"$0 balance", rate:1.1 }, { label:"$1 – $50", rate:3.4 },
+    { label:"$50+", rate:6.8 }, { label:"Past due", rate:12.2 },
+  ],
+  "Plan": [
+    { label:"Basic", rate:2.6 }, { label:"Premium", rate:4.1 }, { label:"Ultimate", rate:5.0 },
+  ],
+  "Stated reason": [
+    { label:"Price", rate:3.0 }, { label:"No longer needed", rate:1.8 },
+    { label:"Didn't see value", rate:2.9 }, { label:"Billing concern", rate:9.7 },
+    { label:"Switching to competitor", rate:3.3 },
+  ],
+};
+
+function bucketFor(b){ return b===0 ? "$0" : b<=50 ? "$1-$50" : "$50+"; }
+function money(n){ return "$"+n; }
+function stageForScreen(s){ return s==="confirm"?1 : s==="success"?2 : s==="postCancel"?3 : 0; }
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ---------------------------------------------------------------------- */
+/* State                                                                    */
+/* ---------------------------------------------------------------------- */
+let state = {
+  demoId: "demo2", screen: "entry", view: "customer",
+  reason: "", confirmationId: null, confirmedAt: null,
+  toast: null, events: [],
+};
+let toastTimer = null;
+
+function logEvent(name, dims = {}) {
+  const time = new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+  state.events.push({ name, time, dims });
+}
+function showToast(msg) {
+  state.toast = msg;
+  render();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { state.toast = null; render(); }, 2400);
+}
+function goTo(next, eventName, dims) {
+  const demo = DEMOS[state.demoId];
+  if (eventName) logEvent(eventName, { plan: demo.plan, balance_bucket: bucketFor(demo.balance), payment_status: demo.paymentStatus, ...(dims||{}) });
+  state.screen = next;
+  render();
+}
+function resetFlow(nextDemoId) {
+  state = { demoId: nextDemoId, screen:"entry", view: state.view, reason:"", confirmationId:null, confirmedAt:null, toast:null, events:[] };
+  render();
+}
+function handleKeepAccount() {
+  const demo = DEMOS[state.demoId];
+  logEvent("cancellation_abandoned", { plan: demo.plan, balance_bucket: bucketFor(demo.balance), payment_status: demo.paymentStatus, at_screen: state.screen });
+  state.screen = "kept";
+  render();
+}
+function handleReasonChange(val) {
+  state.reason = val;
+  logEvent("cancellation_reviewed", { cancellation_reason: val });
+  render();
+}
+function handleConfirm() {
+  const demo = DEMOS[state.demoId];
+  state.confirmationId = "KOF-" + Math.floor(100000 + Math.random()*900000);
+  state.confirmedAt = "August 19, 2026";
+  logEvent("cancellation_confirmed", { plan: demo.plan, balance_bucket: bucketFor(demo.balance), payment_status: demo.paymentStatus, cancellation_reason: state.reason || "not_provided" });
+  goTo("success", "confirmation_viewed");
+}
+function setView(v) { state.view = v; render(); }
+
+/* ---------------------------------------------------------------------- */
+/* Small render helpers                                                    */
+/* ---------------------------------------------------------------------- */
+function ledgerRow(label, valueHtml, valueClass) {
+  return `<div class="se-ledger-row"><span class="se-ledger-label">${esc(label)}</span><span class="se-ledger-value ${valueClass||""}">${valueHtml}</span></div>`;
+}
+function pill(tone, text) { return `<span class="se-pill se-pill-${tone}">${esc(text)}</span>`; }
+function stageTracker(screen) {
+  const active = stageForScreen(screen);
+  let html = `<div class="se-tracker">`;
+  STAGES.forEach((s, i) => {
+    const dotCls = `se-tracker-dot ${i<=active?"is-active":""} ${i===active?"is-current":""}`;
+    const dotInner = i < active ? "✓" : (i+1);
+    html += `<div class="se-tracker-item">
+      <div class="${dotCls}">${dotInner}</div>
+      <span class="se-tracker-label ${i===active?"is-current":""}">${s}</span>
+      ${i < STAGES.length-1 ? `<div class="se-tracker-line ${i<active?"is-active":""}"></div>` : ""}
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+function infoCard(icon, title, text, footerHtml) {
+  return `<div class="se-card">
+    <div class="se-card-icon">${icon}</div>
+    <div>
+      <p class="se-card-title">${esc(title)}</p>
+      <p class="se-card-text">${text}</p>
+      ${footerHtml || ""}
+    </div>
+  </div>`;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Screens                                                                  */
+/* ---------------------------------------------------------------------- */
+function screenEntry(demo) {
+  return `
+    <div class="se-content">
+      <h1 class="se-h1">Cancel Kikoff</h1>
+      <p class="se-sub">Before you cancel, we'll show you what happens to your plan, payments, account balance, and credit reporting.</p>
+      <div class="se-snapshot">
+        ${ledgerRow("Plan", esc(demo.plan))}
+        ${ledgerRow("Monthly plan cost", money(demo.monthlyPrice))}
+        ${ledgerRow("Current account balance", money(demo.balance), demo.balance>0?"tone-primary":"tone-success")}
+        ${ledgerRow("Next payment", esc(demo.nextPaymentLabel || "None due"))}
+        ${ledgerRow("Payment status", pill(demo.paymentStatus==="past_due"?"danger":"success", demo.paymentStatus==="past_due"?"Past due":"On track"))}
+      </div>
+      <div class="se-actions">
+        <button class="se-btn se-btn-primary" onclick="goTo('meaning','cancellation_started',{at_screen:'entry'})">Continue →</button>
+        <button class="se-link-btn" onclick="handleKeepAccount()">Keep my account</button>
+      </div>
+    </div>`;
+}
+
+function screenKept(demo) {
+  return `
+    <div class="se-content">
+      <h1 class="se-h1">Your account is unchanged</h1>
+      <p class="se-sub">Nothing was cancelled. Your plan, balance, and payment schedule stay exactly as they were.</p>
+      <div class="se-snapshot">
+        ${ledgerRow("Plan", esc(demo.plan))}
+        ${ledgerRow("Current account balance", money(demo.balance), demo.balance>0?"tone-primary":"tone-success")}
+        ${ledgerRow("Next payment", esc(demo.nextPaymentLabel || "None due"))}
+      </div>
+      <div class="se-actions">
+        <button class="se-btn se-btn-primary" onclick="goTo('entry')">Back to overview →</button>
+      </div>
+    </div>`;
+}
+
+function screenMeaning() {
+  return `
+    <div class="se-content">
+      <h1 class="se-h1">What cancellation means</h1>
+      <p class="se-sub">Four things change — or don't — when you cancel. Here's exactly what to expect.</p>
+      ${infoCard("↺","Future renewal","Cancelling turns off future renewal. Once your request is confirmed, we stop billing you for the next cycle — your plan won't automatically renew again.")}
+      ${infoCard("$","Existing balance","Cancelling does not erase amounts you already owe. Any outstanding balance remains subject to your account terms.")}
+      ${infoCard("●","Scheduled payment","You may still need to make payments on amounts already owed. We'll show your next required payment before you confirm.")}
+      ${infoCard("✓","Credit reporting","Closing your account does not erase your existing account history. Reporting is handled according to applicable account terms and reporting requirements.", `<span class="se-learnmore" onclick="showToast('This would open detailed reporting terms.')">Learn more</span>`)}
+      <div class="se-actions" style="margin-top:16px;">
+        <button class="se-btn se-btn-primary" onclick="goTo('plan','balance_information_viewed')">Continue →</button>
+      </div>
+    </div>`;
+}
+
+function screenPlan(demo) {
+  const isZero = demo.balance === 0;
+  const isPastDue = demo.paymentStatus === "past_due";
+  let timeline = `<div class="se-timeline">
+    <div class="se-tl-item"><div class="se-tl-dot"></div><div class="se-tl-line"></div><div class="se-tl-date">Today</div><div class="se-tl-text">Cancellation request</div></div>`;
+  if (demo.nextPaymentLabel) {
+    timeline += `<div class="se-tl-item"><div class="se-tl-dot"></div><div class="se-tl-line"></div><div class="se-tl-date">${esc(demo.nextPaymentLabel)}</div><div class="se-tl-text">Next required payment: ${money(demo.balance)}</div></div>`;
+  }
+  timeline += `<div class="se-tl-item"><div class="se-tl-dot"></div><div class="se-tl-line"></div><div class="se-tl-date">After cancellation</div><div class="se-tl-text">Future renewal: Off</div></div>`;
+  timeline += `<div class="se-tl-item"><div class="se-tl-dot"></div><div class="se-tl-date">Remaining balance</div><div class="se-tl-text">${isZero ? "No remaining balance" : money(demo.balance)}</div></div>`;
+  timeline += `</div>`;
+
+  let notes = "";
+  if (isPastDue) {
+    notes += `<div class="se-note se-note-danger">
+      <p class="se-note-title">⚠ Past-due balance</p>
+      You missed a payment of ${money(demo.pastDueAmount)} on ${esc(demo.pastDueDate)}. Cancelling does not remove this balance, and your next required payment is still ${esc(demo.nextPaymentLabel)}.
+      <div class="se-actions" style="margin-top:10px;">
+        <button class="se-btn se-btn-secondary" style="padding:7px 12px;font-size:12.5px;" onclick="logEvent('payment_information_viewed');showToast('This would open your payment options.')">Review payment</button>
+        <button class="se-btn se-btn-secondary" style="padding:7px 12px;font-size:12.5px;" onclick="logEvent('support_clicked',{at_screen:'plan'});showToast('This would connect you with support.')">Contact support</button>
+      </div>
+    </div>`;
+  }
+  if (isZero) {
+    notes += `<div class="se-note se-note-success"><p class="se-note-title">✓ No remaining balance</p>Future renewal will be stopped according to the cancellation terms.</div>`;
+  } else {
+    notes += `<div class="se-note se-note-info"><p class="se-note-title">ⓘ Important</p>Cancelling stops future renewal according to the applicable account terms. It does not remove an existing balance.</div>`;
+  }
+
+  return `
+    <div class="se-content">
+      <h1 class="se-h1">Your cancellation plan</h1>
+      <p class="se-sub">Built from your account's current state — not a generic FAQ.</p>
+      ${timeline}
+      ${notes}
+      <div class="se-actions">
+        <button class="se-btn se-btn-primary" onclick="goTo('confirm','cancellation_plan_viewed')">Review and confirm →</button>
+      </div>
+    </div>`;
+}
+
+function screenConfirm(demo) {
+  const options = REASONS.map(r => `<option value="${esc(r)}" ${state.reason===r?"selected":""}>${esc(r)}</option>`).join("");
+  return `
+    <div class="se-content">
+      <h1 class="se-h1">Ready to cancel?</h1>
+      <p class="se-sub">This is the final review before your cancellation is recorded.</p>
+      <div class="se-snapshot">
+        ${ledgerRow("Product", esc(demo.plan) + " Credit Account")}
+        ${ledgerRow("Future renewal", "Off", "tone-primary")}
+        ${ledgerRow("Outstanding balance", money(demo.balance), demo.balance>0?"tone-primary":"tone-success")}
+        ${ledgerRow("Next required payment", esc(demo.nextPaymentLabel || "None due"))}
+        ${ledgerRow("Cancellation date", "August 19, 2026")}
+      </div>
+      <p class="se-card-title" style="margin-bottom:4px;">Why are you cancelling? <span style="font-weight:400;color:var(--ink-faint);font-size:12px;">(optional)</span></p>
+      <select class="se-select" onchange="handleReasonChange(this.value)">
+        <option value="" ${state.reason===""?"selected":""}>Prefer not to say</option>
+        ${options}
+      </select>
+      <div class="se-actions" style="margin-top:18px;">
+        <button class="se-btn se-btn-danger" onclick="handleConfirm()">Confirm cancellation →</button>
+        <button class="se-link-btn" onclick="goTo('plan')">Back</button>
+      </div>
+    </div>`;
+}
+
+function receiptHtml(demo) {
+  return `<div class="se-receipt">
+    <div class="se-receipt-head"><span>🧾</span><span class="se-receipt-title">Kikoff cancellation confirmation</span></div>
+    ${ledgerRow("Account", "XXXX"+demo.last4)}
+    ${ledgerRow("Plan", esc(demo.plan))}
+    ${ledgerRow("Cancellation requested", esc(state.confirmedAt))}
+    ${ledgerRow("Cancellation effective", esc(demo.effectiveDateLabel))}
+    ${ledgerRow("Future renewal", "Off")}
+    ${ledgerRow("Outstanding balance", money(demo.balance))}
+    ${ledgerRow("Next payment", esc(demo.nextPaymentLabel || "None due"))}
+    <div class="se-receipt-id">Confirmation ID · ${esc(state.confirmationId)}</div>
+  </div>`;
+}
+
+function screenSuccess(demo) {
+  return `
+    <div class="se-content">
+      <h1 class="se-h1">You're all set</h1>
+      <p class="se-sub">Your cancellation has been recorded.</p>
+      <div class="se-snapshot">
+        ${ledgerRow("Account status", pill("success","Cancellation confirmed"))}
+        ${ledgerRow("Future renewal", "Off", "tone-primary")}
+        ${ledgerRow("Outstanding balance", money(demo.balance), demo.balance>0?"tone-primary":"tone-success")}
+        ${ledgerRow("Next required payment", esc(demo.nextPaymentLabel || "None due"))}
+      </div>
+      ${receiptHtml(demo)}
+      <div class="se-actions">
+        <button class="se-btn se-btn-secondary" onclick="logEvent('confirmation_downloaded');showToast('Prototype only — nothing is actually emailed.')">✉ Email confirmation</button>
+        <button class="se-btn se-btn-secondary" onclick="logEvent('confirmation_downloaded');showToast('Prototype only — nothing is actually downloaded.')">⬇ Download confirmation</button>
+      </div>
+      <div class="se-actions" style="margin-top:12px;">
+        <button class="se-btn se-btn-primary" onclick="goTo('postCancel','confirmation_viewed',{at_screen:'success'})">Return to account →</button>
+      </div>
+    </div>`;
+}
+
+function screenPostCancel(demo) {
+  return `
+    <div class="se-content">
+      <h1 class="se-h1">Account overview</h1>
+      <p class="se-sub">So you never have to wonder whether your cancellation went through.</p>
+      <div class="se-snapshot">
+        ${ledgerRow("Account status", pill("success","Cancellation confirmed"))}
+        ${ledgerRow("Future renewal", "Off", "tone-primary")}
+        ${ledgerRow("Remaining balance", money(demo.balance), demo.balance>0?"tone-primary":"tone-success")}
+        ${ledgerRow("Next payment", esc(demo.nextPaymentLabel || "None due"))}
+        ${ledgerRow("Confirmation ID", esc(state.confirmationId || "—"))}
+      </div>
+      <div class="se-actions">
+        <button class="se-btn se-btn-secondary" onclick="goTo('success')">🧾 View cancellation confirmation</button>
+        <button class="se-btn se-btn-secondary" onclick="logEvent('support_clicked',{at_screen:'postCancel'});showToast('This would connect you with support.')">☎ Contact support</button>
+      </div>
+    </div>`;
+}
+
+function dashboard() {
+  let funnelHtml = "";
+  FUNNEL.forEach(f => {
+    const w = (f.value / FUNNEL[0].value) * 100;
+    funnelHtml += `<div class="se-funnel-row">
+      <span class="se-funnel-label">${esc(f.label)}</span>
+      <div class="se-funnel-bar" style="width:${w}%;max-width:220px;"></div>
+      <span class="se-funnel-value">${f.value.toLocaleString()}</span>
+    </div>`;
+  });
+  let segHtml = "";
+  Object.entries(SEGMENTS).forEach(([title, rows]) => {
+    segHtml += `<p class="se-seg-title">${esc(title)} · post-cancellation issue rate</p>
+      <table class="se-seg-table"><tbody>
+        ${rows.map(r => `<tr><td>${esc(r.label)}</td><td>${r.rate}%</td></tr>`).join("")}
+      </tbody></table>`;
+  });
+  let eventsHtml = state.events.length === 0
+    ? `<p class="se-empty">No events yet — interact with the customer app to generate events.</p>`
+    : state.events.map(e => `<div class="se-event-row"><span class="se-event-time">${esc(e.time)}</span><span>${esc(e.name)}${Object.keys(e.dims).length ? " · " + esc(JSON.stringify(e.dims)) : ""}</span></div>`).join("");
+
+  return `
+    <div class="se-dash">
+      <p class="se-dash-title">Cancellation health</p>
+      <p class="se-dash-sub">Internal PM view · not shown to customers</p>
+      <div class="se-metric-row">
+        <div class="se-metric"><div class="se-metric-label">Post-cancellation issue rate</div><div class="se-metric-value">3.8%</div></div>
+        <div class="se-metric"><div class="se-metric-label">Cancellation completion</div><div class="se-metric-value">84.0%</div></div>
+        <div class="se-metric"><div class="se-metric-label">Median time to complete</div><div class="se-metric-value">2m 40s</div></div>
+      </div>
+      <div class="se-synth-tag">Synthetic demo data — not Kikoff data. Last 90 days, all users.</div>
+      <div class="se-funnel">${funnelHtml}</div>
+      ${segHtml}
+      <p class="se-seg-title">This session · live instrumentation</p>
+      <div class="se-eventlog">${eventsHtml}</div>
+    </div>`;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Root render                                                             */
+/* ---------------------------------------------------------------------- */
+function render() {
+  const demo = DEMOS[state.demoId];
+  const demoBtns = Object.values(DEMOS).map(d =>
+    `<button class="se-demo-btn ${d.id===state.demoId?"is-active":""}" aria-pressed="${d.id===state.demoId}" onclick="resetFlow('${d.id}')">${esc(d.label)}</button>`
+  ).join("");
+
+  let body;
+  if (state.view === "customer") {
+    let screenHtml;
+    if (state.screen === "entry") screenHtml = screenEntry(demo);
+    else if (state.screen === "kept") screenHtml = screenKept(demo);
+    else if (state.screen === "meaning") screenHtml = screenMeaning();
+    else if (state.screen === "plan") screenHtml = screenPlan(demo);
+    else if (state.screen === "confirm") screenHtml = screenConfirm(demo);
+    else if (state.screen === "success") screenHtml = screenSuccess(demo);
+    else if (state.screen === "postCancel") screenHtml = screenPostCancel(demo);
+
+    const showTracker = state.screen !== "postCancel" && state.screen !== "kept";
+    body = `<div class="se-toast-wrap">
+      ${showTracker ? stageTracker(state.screen) : ""}
+      ${screenHtml}
+      <div class="se-toast ${state.toast ? "is-visible" : ""}" role="status" aria-live="polite">${state.toast ? esc(state.toast) : ""}</div>
+    </div>`;
+  } else {
+    body = dashboard();
+  }
+
+  document.getElementById("app").innerHTML = `
+    <div class="se-topbar">
+      <div class="se-wordmark"><span class="se-wordmark-text">kikoff</span><span class="se-proto-pill">Prototype</span></div>
+      <div class="se-view-toggle">
+        <button class="se-toggle-btn ${state.view==="customer"?"is-active":""}" aria-pressed="${state.view==="customer"}" onclick="setView('customer')">👤 Customer app</button>
+        <button class="se-toggle-btn ${state.view==="internal"?"is-active":""}" aria-pressed="${state.view==="internal"}" onclick="setView('internal')">▦ Internal dashboard</button>
+      </div>
+    </div>
+    <div class="se-demorow"><span class="se-demorow-label">Demo account</span>${demoBtns}</div>
+    ${body}
+    <div class="se-footer-note">Case-study prototype for portfolio purposes · not built or endorsed by Kikoff · all data shown is synthetic</div>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>
